@@ -1,0 +1,254 @@
+{
+  "name": "Insurance Claim Validation with google docs",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        0
+      ],
+      "id": "dd35210c-30bc-491d-a02b-21dbca898050",
+      "name": "When chat message received",
+      "webhookId": "f2aab81d-e70c-425d-812c-fa4a3a508dcb"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "Analyze the insurance claim.\n\nExtract these details:\n\nName: <person name>\nEmail: <email address>\nPolicyID: <policy number>\nClaimAmount: <amount>\n\nStatus: <Valid/Suspicious/Invalid>\n\nRiskScore: <number>\nRiskScore Rules:\n- 0–30 = Valid (low risk)\n- 31–70 = Suspicious (medium risk)\n- 71–100 = Reject (high risk)\n\nDecision: <Approved/Under Investigate/Rejected>\nReason: <short reason>\n\nIMPORTANT:\n- RiskScore must match the Status according to the rules above.\n- Do NOT add any extra text.\n- Do NOT explain anything.\n\nReturn ONLY in this exact format."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        224,
+        0
+      ],
+      "id": "9b58c967-c688-4913-aac0-d4670fb31f85",
+      "name": "AI Risk Analyzer"
+    },
+    {
+      "parameters": {
+        "model": "llama-3.3-70b-versatile",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        160,
+        208
+      ],
+      "id": "0a9aee9a-2b8f-42cd-9802-a0e59417489c",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "jsXzHkDRaKGznhLL",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        320,
+        208
+      ],
+      "id": "b1880ef7-c847-4be7-9714-be4eaf357c87",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{$node[\"AI Risk Analyzer\"].json[\"output\"].match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}/)?.[0]}}",
+        "subject": "=Insurance Claim — {{$node[\"AI Risk Analyzer\"].json[\"output\"].match(/Status:\\s*(.*)/)[1]}}",
+        "message": "=Dear {{$node[\"AI Risk Analyzer\"].json[\"output\"].match(/Name:\\s*(.*)/)[1]}},<br><br>\n\nYour claim has been analyzed.<br><br>\n\nPolicy ID: {{$node[\"AI Risk Analyzer\"].json[\"output\"].match(/PolicyID:\\s*(.*)/)[1]}}<br>\nClaim Amount: {{$node[\"AI Risk Analyzer\"].json[\"output\"].match(/ClaimAmount:\\s*(.*)/)[1]}}<br>\nStatus: {{$node[\"AI Risk Analyzer\"].json[\"output\"].match(/Status:\\s*(.*)/)[1]}}<br>\nRisk Score: {{$node[\"AI Risk Analyzer\"].json[\"output\"].match(/RiskScore:\\s*(.*)/)[1]}}<br>\nDecision: {{$node[\"AI Risk Analyzer\"].json[\"output\"].match(/Decision:\\s*(.*)/)[1]}}<br><br>\n\nYour report link:<br>\n{{\"https://docs.google.com/document/d/\" + $node[\"Create a document\"].json[\"id\"] + \"/edit\"}}<br><br>\n\nThank you",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        976,
+        0
+      ],
+      "id": "1078cabe-0e3d-4cea-b093-64c4d01fdd76",
+      "name": "Send a message",
+      "webhookId": "f48fcbf1-4f3f-4c9b-a95a-0cc67c31e055",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "BWp2xAQGJZzn9GRx",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "folderId": "1l451S358GEBjxjDACF4BBZM7qenAhMan",
+        "title": "={{$node[\"AI Risk Analyzer\"].json[\"output\"].match(/Name:\\s*(.*)/)[1]}} — {{$node[\"AI Risk Analyzer\"].json[\"output\"].match(/PolicyID:\\s*(.*)/)[1]}}"
+      },
+      "type": "n8n-nodes-base.googleDocs",
+      "typeVersion": 2,
+      "position": [
+        560,
+        0
+      ],
+      "id": "3bc658fa-095d-47f8-8be7-37e639655847",
+      "name": "Create a document",
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "FQa7fmMfDOlxt6by",
+          "name": "Google Docs account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentURL": "={{$node[\"Create a document\"].json[\"id\"]}}",
+        "actionsUi": {
+          "actionFields": [
+            {
+              "action": "insert",
+              "text": "=INSURANCE CLAIM REPORT\n\nName: {{$node[\"AI Risk Analyzer\"].json[\"output\"].match(/Name:\\s*(.*)/)[1]}}\nEmail: {{$node[\"AI Risk Analyzer\"].json[\"output\"].match(/Email:\\s*(.*)/)[1]}}\nPolicy ID: {{$node[\"AI Risk Analyzer\"].json[\"output\"].match(/PolicyID:\\s*(.*)/)[1]}}\nClaim Amount: {{$node[\"AI Risk Analyzer\"].json[\"output\"].match(/ClaimAmount:\\s*(.*)/)[1]}}\n\nStatus: {{$node[\"AI Risk Analyzer\"].json[\"output\"].match(/Status:\\s*(.*)/)[1]}}\nRisk Score: {{$node[\"AI Risk Analyzer\"].json[\"output\"].match(/RiskScore:\\s*(.*)/)[1]}}\nDecision: {{$node[\"AI Risk Analyzer\"].json[\"output\"].match(/Decision:\\s*(.*)/)[1]}}\nReason: {{$node[\"AI Risk Analyzer\"].json[\"output\"].match(/Reason:\\s*(.*)/)[1]}}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.googleDocs",
+      "typeVersion": 2,
+      "position": [
+        768,
+        0
+      ],
+      "id": "a14552ee-3881-4b3e-bd6a-dc82193ebaf6",
+      "name": "Update a document",
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "AY16cVosaysGFB0i",
+          "name": "Google Docs account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "share",
+        "fileId": {
+          "__rl": true,
+          "value": "={{$node[\"Create a document\"].json[\"id\"]}}",
+          "mode": "id"
+        },
+        "permissionsUi": {
+          "permissionsValues": {
+            "role": "reader",
+            "type": "anyone"
+          }
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        816,
+        288
+      ],
+      "id": "7a3b6958-bb0e-4962-8cd2-4dfaea571957",
+      "name": "Share file",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "cRYzvK7dpTDuCb9V",
+          "name": "Google Drive account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Risk Analyzer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Risk Analyzer",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Risk Analyzer",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Risk Analyzer": {
+      "main": [
+        [
+          {
+            "node": "Create a document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a document": {
+      "main": [
+        [
+          {
+            "node": "Update a document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update a document": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Share file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "8346a2b2-d0cd-4c1a-9ad1-ff4f5d4c9d0d",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "4d7f9bbddf43bc8aaf6ab68aedad682c18d350f7a38dc557374a3eea98398a0c"
+  },
+  "id": "p0GE9u5kBTqh4ICy",
+  "tags": []
+}
